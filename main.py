@@ -468,3 +468,119 @@ def calcualtor(title):
     Button(app, text='C', width=5, command=clear).grid(row=5, column=0, columnspan=4)
 
     app.mainloop()
+def image_generator(unsplash_access_key, font, theme, colortheme="blue"):
+    import requests
+    import io
+    import customtkinter as ctk
+    from PIL import Image
+    from tkinter import filedialog
+
+    # Initialize CustomTkinter settings
+    ctk.set_appearance_mode(theme)
+    ctk.set_default_color_theme(colortheme)  # Light theme
+
+    # Create main window
+    root = ctk.CTk()
+    ctk.CTkFont(font)
+    root.title("Image Generator")
+    root.geometry("700x500")
+    root.resizable(False, False)
+
+    # Replace with your working Unsplash API key
+    UNSPLASH_ACCESS_KEY = unsplash_access_key
+
+    # Global variable to store the last downloaded image
+    current_image = None
+
+    # Function to download and save the image
+    def download_image():
+        global current_image
+        if current_image:
+            file_path = filedialog.asksaveasfilename(defaultextension=".png",
+                                                    filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg"), ("All Files", "*.*")])
+            if file_path:
+                current_image.save(file_path)
+                print(f"Image saved as {file_path}")
+
+    # Function to retrieve and display an image
+    def display_image(category):
+        global current_image
+        if category == "Choose Category":
+            return
+        
+        url = f"https://api.unsplash.com/photos/random?query={category}&orientation=landscape&client_id={UNSPLASH_ACCESS_KEY}"
+        try:
+            
+            response = requests.get(url)
+            response.raise_for_status()
+            download_button.grid_forget()
+            data = response.json()
+            
+            
+            img_url = data.get("urls", {}).get("regular")
+            if not img_url:
+                label.configure(text="No image found", image=None)
+                download_button.grid_forget()
+                return
+
+            img_data = requests.get(img_url).content
+            current_image = Image.open(io.BytesIO(img_data)).resize((600, 400), Image.LANCZOS)
+            
+            # Convert to CTkImage to avoid warning
+            ctk_image = ctk.CTkImage(light_image=current_image, size=(600, 400))
+
+            label.configure(image=ctk_image, text="")
+            label.image = ctk_image
+
+            # Show download button after an image is loaded
+            download_button.grid(row=2, column=0, columnspan=2, pady=10)
+        
+        except requests.exceptions.RequestException as e:
+            label.configure(text="Error fetching image", image=None)
+            download_button.grid_forget()
+            print(f"Error: {e}")
+
+    # Function to enable/disable the "Generate Image" button
+    def enable_button(*args):
+        generate_button.configure(state="normal" if category_var.get() != "Choose Category" else "disabled")
+
+    # Create GUI elements
+    def create_gui():
+        global category_var, generate_button, label, download_button
+
+        # Category dropdown menu
+        category_var = ctk.StringVar(value="random")
+        
+        category_dropdown = ctk.CTkEntry(root, textvariable=category_var)
+        category_dropdown.grid(row=0, column=0, padx=10, pady=20, sticky="ew")
+
+        # Generate Image button
+        generate_button = ctk.CTkButton(root, text="Generate Image", state="disabled", 
+                                        command=lambda: display_image(category_var.get()), 
+                                        font=("Arial", 14, "bold"), corner_radius=8, 
+                                        fg_color="#8ecae6",
+                                        hover_color="#219ebc", text_color="white")
+        generate_button.grid(row=0, column=1, padx=10, pady=20, sticky="ew")
+
+        # Label to display images
+        label = ctk.CTkLabel(root, text="Select a category to generate an image", width=600, height=400, corner_radius=8, 
+                            fg_color="#f0f8ff", anchor="center")
+        label.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
+
+        # Download Image button (initially hidden)
+        download_button = ctk.CTkButton(root, text="Download Image", command=download_image,
+                                        font=("Arial", 12), corner_radius=8, fg_color="#4CAF50", 
+                                        hover_color="#388E3C", text_color="white")
+        download_button.grid(row=2, column=0, columnspan=2, pady=10)
+        download_button.grid_forget()  # Hide initially
+
+        # Configure grid to make columns/rows expandable
+        root.grid_columnconfigure([0, 1], weight=1)
+        root.grid_rowconfigure(1, weight=1)
+        
+        enable_button()
+        root.mainloop()
+
+    if __name__ == '__main__':
+        create_gui()
+image_generator("obfif3lGZRvpY27y2ouZKzag5I_P222JSZxgrCDjXug","arial", "dark", "blue")
